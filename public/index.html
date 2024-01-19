@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Parados Assignment</title>
+
+    <!-- update the version number as needed -->
+    <script defer src="/__/firebase/10.7.2/firebase-app-compat.js"></script>
+    <!-- include only the Firebase features as you need -->
+    <script defer src="/__/firebase/10.7.2/firebase-auth-compat.js"></script>
+    <script
+      defer
+      src="/__/firebase/10.7.2/firebase-database-compat.js"
+    ></script>
+    <script
+      defer
+      src="/__/firebase/10.7.2/firebase-firestore-compat.js"
+    ></script>
+    <script
+      defer
+      src="/__/firebase/10.7.2/firebase-functions-compat.js"
+    ></script>
+    <script
+      defer
+      src="/__/firebase/10.7.2/firebase-messaging-compat.js"
+    ></script>
+    <script defer src="/__/firebase/10.7.2/firebase-storage-compat.js"></script>
+    <script
+      defer
+      src="/__/firebase/10.7.2/firebase-analytics-compat.js"
+    ></script>
+    <script
+      defer
+      src="/__/firebase/10.7.2/firebase-remote-config-compat.js"
+    ></script>
+    <script
+      defer
+      src="/__/firebase/10.7.2/firebase-performance-compat.js"
+    ></script>
+    <!-- 
+      initialize the SDK after all desired features are loaded, set useEmulator to false
+      to avoid connecting the SDK to running emulators.
+    -->
+    <script defer src="/__/firebase/init.js?useEmulator=true"></script>
+
+    <style media="screen">
+      body {
+        background: #eceff1;
+        color: rgba(0, 0, 0, 0.87);
+        font-family: Roboto, Helvetica, Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+      }
+      #message {
+        background: white;
+        max-width: 360px;
+        margin: 100px auto 16px;
+        padding: 32px 24px;
+        border-radius: 3px;
+      }
+      #message h2 {
+        color: #ffa100;
+        font-weight: bold;
+        font-size: 16px;
+        margin: 0 0 8px;
+      }
+      #message h1 {
+        font-size: 22px;
+        font-weight: 300;
+        color: rgba(0, 0, 0, 0.6);
+        margin: 0 0 16px;
+      }
+      #message p {
+        line-height: 140%;
+        margin: 16px 0 24px;
+        font-size: 14px;
+      }
+      #message a {
+        display: block;
+        text-align: center;
+        background: #039be5;
+        text-transform: uppercase;
+        text-decoration: none;
+        color: white;
+        padding: 16px;
+        border-radius: 4px;
+      }
+      #message,
+      #message a {
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+      }
+      #load {
+        color: rgba(0, 0, 0, 0.4);
+        text-align: center;
+        font-size: 13px;
+      }
+      @media (max-width: 600px) {
+        body,
+        #message {
+          margin-top: 0;
+          background: white;
+          box-shadow: none;
+        }
+        body {
+          border-top: 16px solid #ffa100;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Firebase Storage and Firestore Example</h1>
+
+    <!-- File Upload Section -->
+    <input type="file" id="fileInput" onchange="handleFileChange()" />
+    <button onclick="uploadFile()">Upload File</button><br /><br />
+
+    <!-- Image Listing Section -->
+    <button onclick="listImages()">List Images</button><br /><br />
+    <div id="imageList"></div>
+    <br />
+
+    <!-- Text Record Section -->
+    <input type="text" id="textInput" placeholder="Enter text" />
+    <button onclick="createRecord()">Create Record</button><br /><br />
+
+    <!-- Text Retrieve Section -->
+    <button onclick="listTextRecords()">Retrieve Record</button>
+    <div id="textRecordsContainer"></div>
+    <br /><br />
+
+    <!-- element to display error messages -->
+    <div id="errorMessages" style="color: red"></div>
+    <script>
+      const backendURL =
+        "https://us-central1-para-2dfbf.cloudfunctions.net/app";
+
+      // Function to display error messages
+      function displayError(message) {
+        const errorMessagesContainer = document.getElementById("errorMessages");
+        errorMessagesContainer.innerHTML = message;
+      }
+
+      // Handle file change event
+      function handleFileChange() {
+        const fileInput = document.getElementById("fileInput");
+        const file = fileInput.files[0];
+
+        if (file) {
+          const reader = new FileReader();
+
+          reader.onload = function (e) {
+            const base64Data = e.target.result.split(",")[1];
+            // uploadFile(file.name, base64Data);
+          };
+
+          reader.onerror = function (error) {
+            console.error("Error reading the file:", error);
+            displayError("Error reading the file.");
+          };
+
+          reader.readAsDataURL(file);
+        }
+      }
+
+      // Upload file to the backend
+      function uploadFile() {
+        const fileInput = document.getElementById("fileInput");
+        const file = fileInput.files[0];
+
+        if (file) {
+          const reader = new FileReader();
+
+          reader.onload = function (e) {
+            const base64Data = e.target.result.split(",")[1];
+            const fileName = file.name;
+
+            fetch(`${backendURL}/upload`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                fileName,
+                base64Data,
+              }),
+            })
+              .then((response) => {
+                if (!response.ok) {
+                  throw new Error(
+                    `Error: ${response.status} - ${response.statusText}`
+                  );
+                }
+                return response.text();
+              })
+              .then((message) => {
+                fileInput.value = ""; // Clear file input
+                console.log(message);
+              })
+              .catch((error) => {
+                console.error(error);
+                displayError("Error uploading file.");
+              });
+          };
+
+          reader.onerror = function (error) {
+            console.error("Error reading the file:", error);
+            displayError("Error reading the file.");
+          };
+
+          reader.readAsDataURL(file);
+        } else {
+          console.error("No file selected");
+          displayError("No file selected.");
+        }
+      }
+
+      // List uploaded images
+      function listImages() {
+        fetch(`${backendURL}/listImages`)
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error(
+                `Error: ${response.status} - ${response.statusText}`
+              );
+            }
+            return response.json();
+          })
+          .then((images) => {
+            const imageListContainer = document.getElementById("imageList");
+            if (images.length === 0) {
+              displayError("No images found. Please upload some images first.");
+            } else {
+              imageListContainer.innerHTML = ""; // Clear existing content
+              images.forEach((image) => {
+                const imageElement = document.createElement("img");
+                imageElement.src = `${backendURL}/download?fileName=${image}`;
+                imageElement.style.width = "100px"; // Set image width for better display
+
+                // delete button for each image
+                const deleteButton = document.createElement("button");
+                deleteButton.innerText = "Delete";
+                deleteButton.onclick = () => deleteImage(image);
+
+                // download button for each image
+                const downloadButton = document.createElement("button");
+                downloadButton.innerText = "Download";
+                downloadButton.onclick = () => downloadImage(image);
+
+                // Append image, delete button, download button to the container
+                imageListContainer.appendChild(imageElement);
+                imageListContainer.appendChild(downloadButton);
+                imageListContainer.appendChild(deleteButton);
+                imageListContainer.appendChild(document.createElement("br"));
+              });
+            }
+          })
+          .catch((error) => {
+            console.error(error);
+            displayError("Error listing images.");
+          });
+      }
+
+      // Download an image
+      function downloadImage(fileName) {
+        fetch(`${backendURL}/download?fileName=${fileName}`)
+          .then((response) => response.blob())
+          .then((blob) => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+          })
+          .catch((error) => console.error(error));
+      }
+
+      // Delete an image
+      function deleteImage(fileName) {
+        fetch(`${backendURL}/deleteImage?fileName=${fileName}`, {
+          method: "DELETE",
+        })
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error(
+                `Error: ${response.status} - ${response.statusText}`
+              );
+            }
+            return response.text();
+          })
+          .then((message) => {
+            console.log(message);
+            listImages(); // Refresh the image list after deletion
+          })
+          .catch((error) => {
+            console.error(error);
+            displayError("Error deleting image.");
+          });
+      }
+
+      // Create a text record
+      function createRecord() {
+        const textInput = document.getElementById("textInput");
+        const text = textInput.value;
+
+        // Check if the text input is not empty
+        if (text.trim() === "") {
+          displayError("Text input cannot be empty.");
+          return;
+        }
+
+        // Send text data to the backend
+        fetch(`${backendURL}/createRecord`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            text,
+          }),
+        })
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error(
+                `Error: ${response.status} - ${response.statusText}`
+              );
+            }
+            return response.text();
+          })
+          .then((message) => {
+            textInput.value = ""; // Clear text input
+            console.log(message);
+          })
+          .catch((error) => {
+            console.error(error);
+            displayError("Error creating text record.");
+          });
+      }
+
+      // List text records
+      function listTextRecords() {
+        fetch(`${backendURL}/listTextRecords`)
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error(
+                `Error: ${response.status} - ${response.statusText}`
+              );
+            }
+            return response.json();
+          })
+          .then((textRecords) => {
+            const textRecordsContainer = document.getElementById(
+              "textRecordsContainer"
+            );
+            if (textRecords.length === 0) {
+              displayError(
+                "No text records found. Please enter some text records first."
+              );
+            } else {
+              textRecordsContainer.innerHTML = ""; // Clear existing content
+              textRecords.forEach((record) => {
+                const recordElement = document.createElement("div");
+                recordElement.innerHTML = `${record.text}`;
+
+                // Append each text record to the container
+                textRecordsContainer.appendChild(recordElement);
+              });
+            }
+          })
+          .catch((error) => {
+            console.error(error);
+            displayError("Error listing text records.");
+          });
+      }
+    </script>
+  </body>
+</html>
